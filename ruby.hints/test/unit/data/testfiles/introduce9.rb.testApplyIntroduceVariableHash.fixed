@@ -1,0 +1,7 @@
+def mymethod
+  foo = 5
+  bar = 20
+  new_name = { :foo => :bar }
+  test(foo, bar, new_name, :baz => :booy)
+end
+

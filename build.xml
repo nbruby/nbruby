@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="ruby" basedir=".">
+    <import file="nbproject/build-impl.xml"/>
+    <target name="downloadbinaries" description="Download external binaries not stored in Mercurial sources." depends="-taskdefs">
+        <property file="${user.home}/.nbbuild.properties"/> <!-- permit binaries.cache to be overridden -->
+        <property name="binaries.cache" location="${user.home}/.hgexternalcache"/>
+        <property name="binaries.server" value="http://hg.netbeans.org/binaries/"/>
+        <downloadbinaries cache="${binaries.cache}" server="${binaries.server}">
+            <manifest dir=".">
+                <include name="*/external/binaries-list"/>
+            </manifest>
+        </downloadbinaries>
+
+        <taskdef resource="net/sf/antcontrib/antlib.xml">
+            <classpath>
+                <pathelement location="${binaries.cache}/943CD5C8802B2A3A64A010EFB86EC19BAC142E40-ant-contrib-1.0b3.jar"/>
+            </classpath>
+        </taskdef>
+    </target>
+
+    <target name="-init" depends="suite.-init,downloadbinaries">
+        <!--Create/Update keystore-->
+        <delete file="${keystore.location}${keystore.name}"/>
+        <mkdir dir="${keystore.location}"/>
+        <genkey alias="${keystore.alias}" storepass="${keystore.password}"
+        dname="${keystore.dname}"
+        keystore="${keystore.location}${keystore.name}"/>
+        <!--Update keystore info in projects-->
+        <antcall target="update-keystore-info"/>
+    </target>
+
+    <target name="update-keystore-info">
+        <for list="${modules}" delimiter=":" param="cur" trim="true">
+            <sequential>
+                <mkdir dir="@{cur}/nbproject/"/>
+                <!--Place the information in the properties file-->
+<!-- Enebo: I ran this once which updated these files, but we should not
+     update them every run since they are under revision control -->
+<!--                <propertyfile file="@{cur}/nbproject/project.properties">
+                    <entry  key="keystore" value="../${keystore.location}${keystore.name}"/>
+                    <entry  key="nbm_alias" value="${keystore.alias}"/>
+                </propertyfile> -->
+                <mkdir dir="@{cur}/nbproject/private/"/>
+                <!--Place the password in the private properties file-->
+                <propertyfile file="@{cur}/nbproject/private/private.properties">
+                    <entry  key="storepass" value="${keystore.password}"/>
+                </propertyfile>
+            </sequential>
+        </for>    
+    </target>
+
+    <target name="test-unit" depends="build" description="Runs tests for all modules in the suite.">
+        <sortsuitemodules unsortedmodules="${modules}" sortedmodulesproperty="modules.test.sorted" sorttests="true"/>
+        <property name="continue.after.failing.tests" value="true"/> <!-- fallback -->
+        <subant target="test-unit" buildpath="${modules.test.sorted}" inheritrefs="false" inheritall="false">
+            <property name="cluster.path.evaluated" value="${cluster.path.evaluated}"/> <!-- Just for speed of pre-7.0 projects -->
+            <property name="continue.after.failing.tests" value="${continue.after.failing.tests}"/>
+        </subant>
+    </target>
+</project>

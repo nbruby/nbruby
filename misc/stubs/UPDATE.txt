@@ -1,0 +1,86 @@
+#!/bin/sh
+
+# This document describes (in script form) how to generate the rubystubs directory which is
+# used for code completion, documentation etc. of the native/builtin Ruby libraries.
+# On my Mac, I can run this as 
+#  sh UPDATE.sh
+# to do these steps automatically.  Just edit the settings at the top and you should be all set.
+# For now, the rubystubs.zip file lives in the ruby/jruby project; that ought to change.
+
+# Edit as necessary
+RUBY_SRCS=~/dev/ruby/ruby-1.8.6
+STUB_DIR=~/netbeans/work/ruby/stubs
+OUTPUTDIR=/tmp/rubystubs/0.2
+WORKDIR=/tmp/stubgenerator
+RUBY=/Users/tor/dev/ruby/install/ruby-1.8.5/bin/ruby
+JAVA=java
+
+# You shouldn't have to edit these - they are derived from settings above
+BASE=$WORKDIR/base
+EXTRA=$WORKDIR/extra
+BASERDOC=$WORKDIR/baserdoc
+EXTRARDOC=$WORKDIR/extrardoc
+INDEX_GENERATOR=$STUB_DIR/rdocscanner
+STUB_GENERATOR_JAR=$STUB_DIR/generator/dist/generator.jar
+ORIGINAL_DIR=`pwd`
+
+# First make sure that the generator project is built
+if [ ! -f $STUB_GENERATOR_JAR ]; then
+    echo "You have to build the generator project first - $STUB_GENERATOR_JAR doesn't exist"
+    exit 1
+fi
+
+if [ ! -d $RUBY_SRCS ]; then
+    echo "Native Ruby sources are missing... $RUBY_SRCS"
+    exit 1
+fi
+
+# Initialize
+cd /tmp
+rm -rf $OUTPUTDIR
+rm -rf $WORKDIR; mkdir -p $WORKDIR
+mkdir -p $BASE
+mkdir -p $EXTRA
+
+# First, take the Ruby sources and split them in half: the "ext" stuff goes in
+# $EXTRA, everything else in $BASE. This is necessary because I want to place
+# ext/ methods added to the standard base classes in separate files, not merged
+# into a single class view as rdoc would otherwise do
+cd ${RUBY_SRCS}; tar cf - . | (cd $BASE;  tar xf -)
+cd $BASE
+mv ext/ $EXTRA
+
+# I don't want to index the TK and Win32 stuff
+rm -rf $EXTRA/ext/tk $EXTRA/ext/win32ole
+
+
+# Remove all the Ruby code in there - that's bundled in the lib/1.8 part of our
+# distro and scanned separately
+cd $BASE; find . -name "*.rb" -exec rm {} \;
+cd $EXTRA; find . -name "*.rb" -exec rm {} \;
+
+# Next, run the modified rdoc generator to build up an index for each of
+# $BASE and $EXTRA, into $BASERDOC and $EXTRARDOC
+cd $BASE; $RUBY -I $INDEX_GENERATOR/lib $INDEX_GENERATOR/lib/main.rb --nb --op $BASERDOC
+
+cd $EXTRA/ext
+for name in `find . -maxdepth 1 -mindepth 1 -type d -print`; do
+  cd $EXTRA/ext/$name; $RUBY -I $INDEX_GENERATOR/lib $INDEX_GENERATOR/lib/main.rb --nb --op $EXTRARDOC/$name
+done
+
+
+# Next, run the stub assembler to build the actual stub directories from the indices
+$JAVA -Xmx256m -jar $STUB_GENERATOR_JAR $OUTPUTDIR $BASERDOC $EXTRARDOC
+
+# Next, make sure that the sources are compilable:
+for file in `ls $OUTPUTDIR/*`
+do
+    $RUBY -c $file | grep -v "Syntax OK"
+done
+
+# Finally, run the formatter
+echo "Run the Ruby IDE with the gsf/tools module enabled, and invoke Windows | Ruby Development | Format Source Directory"
+echo "(with gsf/tools loaded) and point to $OUTPUTDIR to reformat all the source code."
+echo "When done, $OUTPUTDIR is ready to be used as a library stub directory."
+
+cd $ORIGINAL_DIR

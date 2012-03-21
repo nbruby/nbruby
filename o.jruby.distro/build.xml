@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- You may freely edit this file. See harness/README in the NetBeans platform -->
+<!-- for some information on what you could do (e.g. targets to override). -->
+<!-- If you delete this file and reopen the project it will be recreated. -->
+<project name="o.jruby.distro" default="netbeans" basedir=".">
+    <description>Builds, tests, and runs the project o.jruby.distro</description>
+    <import file="nbproject/build-impl.xml"/>
+
+    <target name="jruby.distro.init">
+        <uptodate property="jruby.distro.build.uptodate" targetfile="${cluster}/jruby-${jruby_src_version}">
+            <srcfiles dir="${src.dir}" includes="**/*"/>
+            <srcfiles dir="external" includes="**/*"/>
+        </uptodate>
+    </target>
+
+    <target name="files-init" depends="projectized-common.files-init">
+        <!-- Override module.files definition performed by parent, used for NBMs etc. -->
+        <patternset id="module.files" includes="${release.files},${extra.module.files}">
+            <!-- Standard includes (from common definition) -->
+            <include name="${module.jar}"/>
+            <include name="${javahelp.jar}" if="has.javahelp"/>
+            <include name="config/Modules/${code.name.base.dashes}.xml"/>
+            <include name="config/ModuleAutoDeps/${code.name.base.dashes}.xml" if="has.module.auto.deps"/>
+            <include name="ant/nblib/${code.name.base.dashes}.jar"/>
+            <!-- JRuby+Rails stuff -->
+            <include name="jruby/**"/>
+            <!-- preindexing not supported in Parsing API, so just delete the files
+            <exclude name="jruby-${jruby_src_version}/**/netbeans-index-*.zip"/>
+            -->
+        </patternset>
+    </target>    
+
+    <path id="jruby.class.path">
+      <pathelement location="${cluster}/jruby/lib/jruby.jar" />
+    </path>
+
+    <macrodef name="gem-install">
+      <attribute name="compile.mode" default="OFF"/>
+      <attribute name="inproc" default="true"/>
+      <attribute name="jruby.args" default=""/>
+      <attribute name="gems"/>
+      <attribute name="dir" default="${basedir}"/>
+      <attribute name="jruby.launch.memory" default="512M"/>
+      <attribute name="jruby.home" default="${cluster}/jruby"/>
+
+      <sequential>
+        <echo message="Installing gems @{gems}"/>
+        <java classname="org.jruby.Main" fork="true" maxmemory="@{jruby.launch.memory}" failonerror="true" dir="@{dir}">
+          <classpath refid="jruby.class.path"/>
+
+          <sysproperty key="jruby.home" value="@{jruby.home}"/>
+          <sysproperty key="jruby.compile.mode" value="@{compile.mode}"/>
+          <sysproperty key="jruby.launch.inproc" value="@{inproc}"/>
+
+          <arg line="@{jruby.args} -S gem install @{gems} --no-ri --no-rdoc"/>
+          <env key="JRUBY_OPTS" value=""/>
+        </java>
+      </sequential>
+    </macrodef>
+
+    <target name="build-jruby-bin">
+        <echo>Build JRuby binary distribution from source</echo>
+
+        <!-- Uncompress and move jruby bin dist into plain 'jruby' dir -->
+        <untar compression="gzip" dest="${cluster}" src="external/jruby-bin-${jruby_src_version}.tar.gz"/>
+        <move file="${cluster}/jruby-${jruby_src_version}" tofile="${cluster}/jruby"/>
+        <!-- Does the untar or move lose the execute bits from the file? -->
+        <chmod dir="${cluster}/jruby/bin" includes="*" perm="ugo+rx"/>
+
+        <!-- Remove pre-expanded ri and rdocs -->
+        <delete dir="${cluster}/jruby/share/ri"/>
+
+        <!-- Install extra gems we want in our default distro -->
+        <unzip dest="external" src="external/rails-gems-2.3.8.zip"/>
+        <unzip dest="external" src="external/rcov-0.8.1.5.0-java.zip"/>
+        <gem-install gems="${gem.list}"/>
+    </target>
+
+    <target name="release" depends="init,jruby.distro.init" unless="jruby.distro.build.uptodate">   
+        <antcall target="build-jruby-bin"/>
+    </target>
+</project>

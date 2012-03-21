@@ -1,0 +1,5 @@
+Code completion result for source line:
+class My|Test
+(QueryType=COMPLETION, prefixSearch=true, caseSensitive=true)
+CLASS      MyModel                                    named_scopes
+CLASS      MyTest                                     completion/lib/test2

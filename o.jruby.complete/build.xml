@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="jruby.complete" default="netbeans" basedir=".">
+  <description>Shim to load and make OSGi version of jruby-complete consumable by other nbms</description>
+  <import file="nbproject/build-impl.xml"/>
+  <target name="jar" depends="init">
+      <mkdir dir="${cluster}/modules"/>
+      <copy file="external/jruby-complete-1.6.5.1.jar" tofile="${cluster}/modules/org-jruby-jruby.jar"/>
+  </target>
+</project>

@@ -1,0 +1,15 @@
+
+
+Document 0
+Searchable Keys:
+  class : Foobyy
+  class-ig : foobyy
+  fqn : Foobyy
+  global : $anotherglobal
+  global : $foo
+  global : $foobar
+  method : hello;;Fixnum;
+  require : globals
+
+Not Searchable Keys:
+  attrs : |CLASS|

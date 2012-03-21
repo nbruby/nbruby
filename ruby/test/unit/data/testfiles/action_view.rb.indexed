@@ -1,0 +1,14 @@
+
+
+Document 0
+Searchable Keys:
+  class : Base
+  class-ig : base
+  fqn : ActionView::Base
+  require : action_view
+
+Not Searchable Keys:
+  attrs : |CLASS|
+  in : ActionView
+  includes : ActionView::Partials
+  requires : action_view/base,action_view/partials
